@@ -1,4 +1,6 @@
 import os
+
+import cv2
 import math
 import pandas as pd
 import numpy as np
@@ -37,7 +39,7 @@ class Helper:
         plt.show()
 
     @staticmethod
-    def show_image_wlabels(images=[], labels=[], im_height=96, im_width=96, img_id=0, im_to_show=9, figsize=(8, 8)):
+    def show_image_wlabels(images=[], labels=[], im_height=96, im_width=96, img_id=0, im_to_show=1, figsize=(8, 8)):
 
         col = math.ceil(math.sqrt(im_to_show))
         row = col-1 if (col**2 - im_to_show) > col else col 
@@ -48,11 +50,11 @@ class Helper:
             fig.add_subplot(row, col, i)
 
             if i <= im_to_show:
-                img = images[img_id+(i-1), :]
+                img = images[img_id, :]
                 for j in range(0, labels.shape[1]):
                     if not j&1==1:
-                        x_id = labels[img_id+(i-1), j]
-                        y_id = labels[img_id+(i-1), j+1]
+                        x_id = labels[img_id, j]
+                        y_id = labels[img_id, j+1]
                         if np.isnan(x_id) or np.isnan(y_id):
                             continue
                         else:
@@ -76,38 +78,51 @@ class CNNFaceDetect:
         self.supported_dataset = ['montreal']
            
     def load_training_data(self, path=None, dataset='montreal', nrows=None):
-        if self.check_dataset(path, dataset):
+        # if self.check_dataset(path, dataset):
             if dataset == 'montreal':
                 self.im_height = 96
                 self.im_width = 96
                 self.im_size = (self.im_height, self.im_width, 1)
+                #
+                # if not nrows == None:
+                #     dframe = pd.read_csv(path, nrows=nrows)
+                # else:
+                #     dframe = pd.read_csv(path)
+                #
+                # # fillna
+                # dframe.fillna(method='ffill', inplace=True)
 
-                if not nrows == None:
-                    dframe = pd.read_csv(path, nrows=nrows)
-                else:
-                    dframe = pd.read_csv(path)
-
-                # fillna
-                dframe.fillna(method='ffill', inplace=True)
-
-                # train input
-                flatten_image = dframe['Image'].apply(lambda x: np.reshape(x.split(' '), self.im_size).astype(np.float)).values
-                self.Xtrain = np.zeros((len(flatten_image), self.im_height, self.im_width, 1), dtype=np.float)
-
-                for i, img in enumerate(flatten_image):
-                    self.Xtrain[i, :, :, :] = img
-
-                # train output
-                self.Ytrain = dframe.loc[:, dframe.columns != 'Image'].fillna(value=0)
-                self.Ytrain = self.Ytrain.values
+                # # train input
+                # flatten_image = dframe['Image'].apply(lambda x: np.reshape(x.split(' '), self.im_size).astype(np.float)).values
+                # self.Xtrain = np.zeros((len(flatten_image), self.im_height, self.im_width, 1), dtype=np.float)
+                #
+                # for i, img in enumerate(flatten_image):
+                #     self.Xtrain[i, :, :, :] = img
+                #
+                # # train output
+                # self.Ytrain = dframe.loc[:, dframe.columns != 'Image'].fillna(value=0)
+                # self.Ytrain = self.Ytrain.values
 
             if dataset == 'helen':
                 raise NotImplementedError
 
             if dataset == '300w':
                 raise NotImplementedError
-        else:
-            raise FileNotFoundError('provided dataset is not valid or does not exist')
+        # else:
+        #     raise FileNotFoundError('provided dataset is not valid or does not exist')
+
+    def load_data(self, path=None):
+
+        detected=[1]
+        self.im_height = 96
+        self.im_width = 96
+        self.im_size = (self.im_height, self.im_width, 1)
+
+        img=cv2.imread(path,0)
+
+        self.Xtest = np.zeros((1, self.im_height, self.im_width, 1), dtype=np.float)
+        for i, a in enumerate(detected):
+            self.Xtest[i, :, :, 0] = cv2.resize(img, (self.im_width, self.im_width))
 
     def load_test_data(self, path=None, dataset='montreal'):
         # handle csv
@@ -159,10 +174,10 @@ class CNNFaceDetect:
                            metrics=['mae', 'accuracy'])
 
         # train
-        self.model.fit(self.Xtrain, self.Ytrain, epochs=500, batch_size=128, validation_split=0.2)
+        # self.model.fit(self.Xtrain, self.Ytrain, epochs=500, batch_size=128, validation_split=0.2)
 
         # save
-        tf.keras.models.save_model(self.model, filepath=savepath, overwrite=True, include_optimizer=True)
+        # tf.keras.models.save_model(self.model, filepath=savepath, overwrite=True, include_optimizer=True)
 
     def load_model(self, modelpath=None):
         self.model = []
